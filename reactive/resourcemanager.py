@@ -6,6 +6,11 @@ from charmhelpers.core import hookenv
 import subprocess
 
 
+@when_not('namenode.joined')
+def blocked():
+    hookenv.status_set('blocked', 'waiting for namenode relation')
+
+
 @when('namenode.joined')
 @when_not('resourcemanager.installed')
 def install_hadoop(namenode):
