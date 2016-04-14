@@ -27,6 +27,7 @@ def install_hadoop(namenode):
         hookenv.status_set('waiting', 'waiting for namenode to become ready')
 
 
+@when('namenode.joined')
 @when('resourcemanager.installed')
 @when_not('resourcemanager.started')
 def start_resourcemanager():
@@ -37,14 +38,11 @@ def start_resourcemanager():
     hookenv.status_set('active', 'ready')
 
 
-@when('resourcemanager.started', 'nodemanager.joined')
-def send_info(nodemanager):
-    '''Send nodemanagers our FQDN so they can install as slaves.'''
-    hostname = subprocess.check_output(['hostname', '-f']).strip().decode()
-    nodemanager.send_resourcemanagers([hostname])
-
-    slaves = [node['host'] for node in nodemanager.nodes()]
-    hookenv.status_set('active', 'ready ({count} nodemanager{s})'.format(
-        count=len(slaves),
-        s='s' if len(slaves) > 1 else '',
-    ))
+@when('namenode.joined')
+@when('resourcemanager.started')
+@when('nodemanager.joined')
+def send_info(namenode, nodemanager):
+    '''Send nodemanagers our master FQDNs so they can install as slaves.'''
+    nn_fqdn = namenode.namenodes()[0]
+    rm_fqdn = subprocess.check_output(['hostname', '-f']).strip().decode()
+    nodemanager.send_resourcemanagers([nn_fqdn, rm_fqdn])
