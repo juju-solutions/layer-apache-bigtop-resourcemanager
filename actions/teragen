@@ -1,0 +1,41 @@
+#!/bin/bash
+set -ex
+
+if ! charms.reactive is_state 'resourcemanager.ready'; then
+    action-fail 'ResourceManager not yet ready'
+    exit
+fi
+
+SIZE=`action-get size`
+IN_DIR=`action-get indir`
+
+# create dir to store results
+RUN=`date +%s`
+RESULT_DIR=/opt/teragen-results
+RESULT_LOG=${RESULT_DIR}/${RUN}.log
+mkdir -p ${RESULT_DIR}
+chown -R ubuntu:ubuntu ${RESULT_DIR}
+
+# clean out any previously generated data (must be run as ubuntu)
+su ubuntu << EOF
+if hadoop fs -stat ${IN_DIR} &> /dev/null; then
+    hadoop fs -rm -r -skipTrash ${IN_DIR} || true
+fi
+EOF
+
+benchmark-start
+START=`date +%s`
+# NB: Escaped vars in the block below (e.g., \${HADOOP_HOME}) come from
+# /etc/environment while non-escaped vars (e.g., ${IN_DIR}) are parameterized
+# from this outer scope
+su ubuntu << EOF
+. /etc/environment
+echo 'generating data'
+hadoop jar \${HADOOP_HOME}/share/hadoop/mapreduce/hadoop-mapreduce-examples*.jar teragen ${SIZE} ${IN_DIR} &> ${RESULT_LOG}
+EOF
+STOP=`date +%s`
+benchmark-finish
+
+`cat ${RESULT_LOG} | $CHARM_DIR/actions/parseTerasort.py`
+DURATION=`expr $STOP - $START`
+benchmark-composite "${DURATION}" 'secs' 'asc'

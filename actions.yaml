@@ -1,0 +1,85 @@
+smoke-test:
+  description: >
+    Verify that YARN is working as expected by running a small (1MB) terasort.
+start-yarn:
+    description: All of the YARN processes can be started with this Juju action.
+stop-yarn:
+    description: All of the YARN processes can be stopped with this Juju action.
+restart-yarn:
+    description: All of the YARN processes can be restarted with this Juju action.
+mrbench:
+    description: Mapreduce benchmark for small jobs
+    params:
+        basedir:
+            description: DFS working directory
+            type: string
+            default: "/benchmarks/mrbench"
+        numruns:
+            description: Number of times to run the job
+            type: integer
+            default: 1
+        maps:
+            description: number of maps for each run
+            type: integer
+            default: 2
+        reduces:
+            description: number of reduces for each run
+            type: integer
+            default: 1
+        inputlines:
+            description: number of input lines to generate
+            type: integer
+            default: 1
+        inputtype:
+            description: 'Type of input to generate, one of [ascending, descending, random]'
+            type: string
+            default: "ascending"
+            enum: [ascending,descending,random]
+teragen:
+    description: Generate data with teragen
+    params:
+        size:
+            description: The number of 100 byte rows, default to 1GB of data to generate
+            type: integer
+            default: 10000000
+        indir:
+            description: HDFS directory where generated data is stored
+            type: string
+            default: 'tera_demo_in'
+terasort:
+    description: Runs teragen to generate sample data, and then runs terasort to sort that data
+    params:
+        indir:
+            description: HDFS directory where generated data is stored
+            type: string
+            default: 'tera_demo_in'
+        outdir:
+            description: HDFS directory where sorted data is stored
+            type: string
+            default: 'tera_demo_out'
+        size:
+            description: The number of 100 byte rows, default to 1GB of data to generate and sort
+            type: integer
+            default: 10000000
+        maps:
+            description: The default number of map tasks per job. 1-20
+            type: integer
+            default: 1
+        reduces:
+            description: The default number of reduce tasks per job. Typically set to 99% of the cluster's reduce capacity, so that if a node fails the reduces can still be executed in a single wave. Try 1-20
+            type: integer
+            default: 1
+        numtasks:
+            description: How many tasks to run per jvm. If set to -1, there is no limit.
+            type: integer
+            default: 1
+        compression:
+            description: >
+                        Enable or Disable mapred output (intermediate) compression.
+                        LocalDefault will run with your current local hadoop configuration.
+                        Default means default hadoop deflate codec.
+                        One of: Gzip, BZip2, Snappy, Lzo, Default, Disable, LocalDefault
+                        These are all case sensitive.
+            type: string
+            default: "LocalDefault"
+            enum: [Gzip, BZip2, Snappy, Lzo, Default, Disable, LocalDefault]

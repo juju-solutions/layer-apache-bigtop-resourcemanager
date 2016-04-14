@@ -1,0 +1,53 @@
+#!/bin/bash
+set -ex
+
+if ! charms.reactive is_state 'resourcemanager.ready'; then
+    action-fail 'ResourceManager not yet ready'
+    exit
+fi
+
+RESULT_LOG='/tmp/mrbench.results.log'
+BASE_DIR=`action-get basedir`/`hostname -s`
+OPTIONS=''
+
+MAPS=`action-get maps`
+REDUCES=`action-get reduces`
+NUMRUNS=`action-get numruns`
+INPUTLINES=`action-get inputlines`
+INPUTTYPE=`action-get inputtype`
+
+OPTIONS="${OPTIONS} -maps ${MAPS}"
+OPTIONS="${OPTIONS} -reduces ${REDUCES}"
+OPTIONS="${OPTIONS} -numRuns ${NUMRUNS}"
+OPTIONS="${OPTIONS} -inputLines ${INPUTLINES}"
+OPTIONS="${OPTIONS} -inputType ${INPUTTYPE}"
+OPTIONS="${OPTIONS} -baseDir ${BASE_DIR}"
+
+# clean out any previous data (must be run as ubuntu)
+su ubuntu << EOF
+if hadoop fs -stat ${BASE_DIR} &> /dev/null; then
+    hadoop fs -rm -r -skipTrash ${BASE_DIR} || true
+fi
+EOF
+
+benchmark-start
+START=`date +%s`
+# NB: Escaped vars in the block below (e.g., \${HADOOP_HOME}) come from
+# /etc/environment while non-escaped vars (e.g., ${IN_DIR}) are parameterized
+# from this outer scope
+su ubuntu << EOF
+. /etc/environment
+echo 'running benchmark'
+hadoop jar \${HADOOP_HOME}/share/hadoop/mapreduce/hadoop-*test*.jar mrbench $OPTIONS &> ${RESULT_LOG} 
+EOF
+STOP=`date +%s`
+benchmark-finish
+
+su ubuntu << EOF
+`cat ${RESULT_LOG} | $CHARM_DIR/actions/parseTerasort.py`
+EOF
+
+# More mapreduce benchmark results logged to: ${RESULT_LOG}
+
+DURATION=`expr $STOP - $START`
+benchmark-composite "${DURATION}" 'secs' 'asc'

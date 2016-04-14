@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if ! charms.reactive is_state 'resourcemanager.ready'; then
+    action-fail 'ResourceManager not yet ready'
+    exit
+fi
+
+. /etc/environment
+cd ${HADOOP_HOME}/sbin
+su yarn -c "./stop-yarn.sh"
+su yarn -c "./start-yarn.sh"
