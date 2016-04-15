@@ -41,7 +41,7 @@ def start_resourcemanager(namenode):
 @when('namenode.joined')
 @when('resourcemanager.started')
 @when('nodemanager.joined')
-def send_info(namenode, nodemanager):
+def send_info(nodemanager, namenode):
     '''Send nodemanagers our master FQDNs so they can install as slaves.'''
     nn_fqdn = namenode.namenodes()[0]
     rm_fqdn = subprocess.check_output(['hostname', '-f']).strip().decode()
