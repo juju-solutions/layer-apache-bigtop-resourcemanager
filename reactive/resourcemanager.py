@@ -30,7 +30,7 @@ def install_hadoop(namenode):
 @when('namenode.joined')
 @when('resourcemanager.installed')
 @when_not('resourcemanager.started')
-def start_resourcemanager():
+def start_resourcemanager(namenode):
     hookenv.status_set('maintenance', 'starting resourcemanager')
     for port in get_layer_opts().exposed_ports('resourcemanager'):
         hookenv.open_port(port)
