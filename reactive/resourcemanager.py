@@ -46,3 +46,9 @@ def send_info(nodemanager, namenode):
     nn_fqdn = namenode.namenodes()[0]
     rm_fqdn = subprocess.check_output(['hostname', '-f']).strip().decode()
     nodemanager.send_resourcemanagers([nn_fqdn, rm_fqdn])
+
+
+@when('resourcemanager.clients')
+def accept_clients(clients):
+    rm_fqdn = subprocess.check_output(['hostname', '-f']).strip().decode()
+    clients.send_resourcemanagers([rm_fqdn])
