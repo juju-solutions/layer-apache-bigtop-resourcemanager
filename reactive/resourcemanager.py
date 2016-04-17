@@ -49,4 +49,12 @@ def send_info(nodemanager, namenode):
     nn_host = namenode.namenodes()[0]
     # rm_host = utils.resolve_private_address(hookenv.unit_private_ip())
     rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
+    # TODO: fix below. nodemgrs need both nn and rm to install, but clients
+    # only need the rm. it's confusing to use 'send_resourcemanagers' for both.
     nodemanager.send_resourcemanagers([nn_host, rm_host])
+
+
+@when('resourcemanager.clients')
+def accept_clients(clients):
+    rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
+    clients.send_resourcemanagers([rm_host])

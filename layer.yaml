@@ -8,6 +8,7 @@ includes:
   - 'interface:benchmark'
 options:
   apache-bigtop-base:
+    bigtop_component_list: 'hadoop yarn'
     ports:
         resourcemanager:
             port: 8032
