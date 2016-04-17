@@ -3,6 +3,7 @@ from charms.reactive import when_not
 from charms.reactive import set_state
 from charms.layer.apache_bigtop_base import get_bigtop_base, get_layer_opts
 from charmhelpers.core import hookenv
+from jujubigdata import utils
 import subprocess
 
 
@@ -11,16 +12,18 @@ def blocked():
     hookenv.status_set('blocked', 'waiting for namenode relation')
 
 
-@when('namenode.joined')
+@when('namenode.joined', 'puppet.available')
 @when_not('resourcemanager.installed')
 def install_hadoop(namenode):
     '''Install only if the resourcemanager has sent its FQDN.'''
     if namenode.namenodes():
         hookenv.status_set('maintenance', 'installing resourcemanager')
         nn_host = namenode.namenodes()[0]
-        rm_host = subprocess.check_output(['hostname', '-f']).strip().decode()
+        # rm_host = utils.resolve_private_address(hookenv.unit_private_ip())
+        rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
         bigtop = get_bigtop_base()
-        bigtop.install(NN=nn_host, RM=rm_host)
+        hosts = {'namenode': nn_host, 'resourcemanager': rm_host}
+        bigtop.install(hosts=hosts, roles='resourcemanager')
         set_state('resourcemanager.installed')
         hookenv.status_set('maintenance', 'resourcemanager installed')
     else:
@@ -43,6 +46,7 @@ def start_resourcemanager(namenode):
 @when('nodemanager.joined')
 def send_info(nodemanager, namenode):
     '''Send nodemanagers our master FQDNs so they can install as slaves.'''
-    nn_fqdn = namenode.namenodes()[0]
-    rm_fqdn = subprocess.check_output(['hostname', '-f']).strip().decode()
-    nodemanager.send_resourcemanagers([nn_fqdn, rm_fqdn])
+    nn_host = namenode.namenodes()[0]
+    # rm_host = utils.resolve_private_address(hookenv.unit_private_ip())
+    rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
+    nodemanager.send_resourcemanagers([nn_host, rm_host])
