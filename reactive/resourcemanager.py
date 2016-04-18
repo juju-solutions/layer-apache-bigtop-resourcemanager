@@ -2,7 +2,7 @@ from charms.reactive import when
 from charms.reactive import when_not
 from charms.reactive import set_state
 from charms.layer.apache_bigtop_base import get_bigtop_base, get_layer_opts
-from charmhelpers.core import hookenv
+from charmhelpers.core import hookenv, host
 from jujubigdata import utils
 import subprocess
 
@@ -35,6 +35,10 @@ def install_hadoop(namenode):
 @when_not('resourcemanager.started')
 def start_resourcemanager(namenode):
     hookenv.status_set('maintenance', 'starting resourcemanager')
+    # NB: services should be started by install, but this may be handy in case
+    # we have something that removes the .started state in the future.
+    host.service_start('hadoop-yarn-resourcemanager')
+    host.service_start('hadoop-mapreduce-historyserver')
     for port in get_layer_opts().exposed_ports('resourcemanager'):
         hookenv.open_port(port)
     set_state('resourcemanager.started')
@@ -52,6 +56,14 @@ def send_info(nodemanager, namenode):
     # TODO: fix below. nodemgrs need both nn and rm to install, but clients
     # only need the rm. it's confusing to use 'send_resourcemanagers' for both.
     nodemanager.send_resourcemanagers([nn_host, rm_host])
+
+    # update status with slave count and report ready for hdfs
+    slaves = [node['host'] for node in nodemanager.nodes()]
+    hookenv.status_set('active', 'ready ({count} nodemanager{s})'.format(
+        count=len(slaves),
+        s='s' if len(slaves) > 1 else '',
+    ))
+    set_state('resourcemanager.ready')
 
 
 @when('resourcemanager.clients')

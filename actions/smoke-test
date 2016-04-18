@@ -6,8 +6,8 @@ if ! charms.reactive is_state 'resourcemanager.ready'; then
     exit
 fi
 
-IN_DIR='smoke_test_in'
-OUT_DIR='smoke_test_out'
+IN_DIR='/tmp/smoke_test_in'
+OUT_DIR='/tmp/smoke_test_out'
 SIZE=10000
 OPTIONS=''
 
@@ -32,10 +32,10 @@ RUN=`date +%s`
 RESULT_DIR=/opt/terasort-results
 RESULT_LOG=${RESULT_DIR}/${RUN}.$$.log
 mkdir -p ${RESULT_DIR}
-chown -R ubuntu:ubuntu ${RESULT_DIR}
+chown -R hdfs ${RESULT_DIR}
 
-# clean out any previous data (must be run as ubuntu)
-su ubuntu << EOF
+# clean out any previous data (must be run as the hdfs user)
+su hdfs << EOF
 if hadoop fs -stat ${IN_DIR} &> /dev/null; then
     hadoop fs -rm -r -skipTrash ${IN_DIR} || true
 fi
@@ -45,15 +45,15 @@ fi
 EOF
 
 START=`date +%s`
-# NB: Escaped vars in the block below (e.g., \${HADOOP_HOME}) come from
-# /etc/environment while non-escaped vars (e.g., ${IN_DIR}) are parameterized
+# NB: Escaped vars in the block below (e.g., \${HADOOP_MAPRED_HOME}) come from
+# the environment while non-escaped vars (e.g., ${IN_DIR}) are parameterized
 # from this outer scope
-su ubuntu << EOF
-. /etc/environment
+su hdfs << EOF
+. /etc/default/hadoop
 echo 'generating data'
-hadoop jar \${HADOOP_HOME}/share/hadoop/mapreduce/hadoop-mapreduce-examples*.jar teragen ${SIZE} ${IN_DIR} &>/dev/null
+hadoop jar \${HADOOP_MAPRED_HOME}/hadoop-mapreduce-examples-*.jar teragen ${SIZE} ${IN_DIR} &>/dev/null
 echo 'sorting data'
-hadoop jar \${HADOOP_HOME}/share/hadoop/mapreduce/hadoop-mapreduce-examples*.jar terasort ${OPTIONS} ${IN_DIR} ${OUT_DIR} &> ${RESULT_LOG}
+hadoop jar \${HADOOP_MAPRED_HOME}/hadoop-mapreduce-examples-*.jar terasort ${OPTIONS} ${IN_DIR} ${OUT_DIR} &> ${RESULT_LOG}
 EOF
 STOP=`date +%s`
 
