@@ -35,10 +35,11 @@ def install_hadoop(namenode):
 @when_not('resourcemanager.started')
 def start_resourcemanager(namenode):
     hookenv.status_set('maintenance', 'starting resourcemanager')
-    # NB: services should be started by install, but this may be handy in case
-    # we have something that removes the .started state in the future.
-    host.service_start('hadoop-yarn-resourcemanager')
-    host.service_start('hadoop-mapreduce-historyserver')
+    # NB: service should be started by install, but this may be handy in case
+    # we have something that removes the .started state in the future. Also
+    # note we restart here in case we modify conf between install and now.
+    host.service_restart('hadoop-yarn-resourcemanager')
+    host.service_restart('hadoop-mapreduce-historyserver')
     for port in get_layer_opts().exposed_ports('resourcemanager'):
         hookenv.open_port(port)
     set_state('resourcemanager.started')
