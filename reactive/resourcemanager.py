@@ -58,3 +58,8 @@ def send_info(nodemanager, namenode):
 def accept_clients(clients):
     rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
     clients.send_resourcemanagers([rm_host])
+    port = get_layer_opts().port('resourcemanager')
+    hs_http = get_layer_opts().port('jh_webapp_http')
+    hs_ipc = get_layer_opts().port('jobhistory')
+    clients.send_ports(port, hs_http, hs_ipc)
+    clients.send_ready(True)
