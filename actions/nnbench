@@ -6,22 +6,30 @@ if ! charms.reactive is_state 'apache-bigtop-resourcemanager.ready'; then
     exit
 fi
 
-RESULT_LOG='/tmp/mrbench.results.log'
 BASE_DIR=`action-get basedir`/`hostname -s`
 OPTIONS=''
 
 MAPS=`action-get maps`
 REDUCES=`action-get reduces`
-NUMRUNS=`action-get numruns`
-INPUTLINES=`action-get inputlines`
-INPUTTYPE=`action-get inputtype`
+BLOCKSIZE=`action-get blocksize`
+BYTES=`action-get bytes`
+NUMFILES=`action-get numfiles`
+REPFACTOR=`action-get repfactor`
 
 OPTIONS="${OPTIONS} -maps ${MAPS}"
 OPTIONS="${OPTIONS} -reduces ${REDUCES}"
-OPTIONS="${OPTIONS} -numRuns ${NUMRUNS}"
-OPTIONS="${OPTIONS} -inputLines ${INPUTLINES}"
-OPTIONS="${OPTIONS} -inputType ${INPUTTYPE}"
+OPTIONS="${OPTIONS} -blockSize ${BLOCKSIZE}"
+OPTIONS="${OPTIONS} -bytesToWrite ${BYTES}"
+OPTIONS="${OPTIONS} -numberOfFiles ${NUMFILES}"
+OPTIONS="${OPTIONS} -replicationFactorPerFile ${REPFACTOR}"
 OPTIONS="${OPTIONS} -baseDir ${BASE_DIR}"
+
+# create dir to store results
+RUN=`date +%s`
+RESULT_DIR=/opt/nnbench-results
+RESULT_LOG=${RESULT_DIR}/${RUN}.log
+mkdir -p ${RESULT_DIR}
+chown -R ubuntu:ubuntu ${RESULT_DIR}
 
 # clean out any previous data (must be run as ubuntu)
 su ubuntu << EOF
@@ -38,16 +46,13 @@ START=`date +%s`
 su ubuntu << EOF
 . /etc/default/hadoop
 echo 'running benchmark'
-hadoop jar \${HADOOP_MAPRED_HOME}/hadoop-mapreduce-*test*.jar mrbench $OPTIONS &> ${RESULT_LOG}
+cd /tmp/
+hadoop jar \${HADOOP_MAPRED_HOME}/hadoop-mapreduce-*test*.jar nnbench -operation create_write -readFileAfterOpen true $OPTIONS &> ${RESULT_LOG}
 EOF
 STOP=`date +%s`
 benchmark-finish
 
-su ubuntu << EOF
-`cat ${RESULT_LOG} | $CHARM_DIR/actions/parseTerasort.py`
-EOF
-
-# More mapreduce benchmark results logged to: ${RESULT_LOG}
+`cat ${RESULT_LOG} | $CHARM_DIR/actions/parseNNBench.py`
 
 DURATION=`expr $STOP - $START`
 benchmark-composite "${DURATION}" 'secs' 'asc'

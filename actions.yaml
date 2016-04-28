@@ -1,12 +1,6 @@
 smoke-test:
   description: >
     Verify that YARN is working as expected by running a small (1MB) terasort.
-start-yarn:
-    description: All of the YARN processes can be started with this Juju action.
-stop-yarn:
-    description: All of the YARN processes can be stopped with this Juju action.
-restart-yarn:
-    description: All of the YARN processes can be restarted with this Juju action.
 mrbench:
     description: Mapreduce benchmark for small jobs
     params:
@@ -35,6 +29,61 @@ mrbench:
             type: string
             default: "ascending"
             enum: [ascending,descending,random]
+nnbench:
+    description: Load test the NameNode hardware and configuration
+    params:
+        maps:
+                description: number of map jobs
+                type: integer
+                default: 12
+        reduces:
+                description: number of reduces
+                type: integer
+                default: 6
+        blocksize:
+                description: block size
+                type: integer
+                default: 1
+        bytes:
+                description: bytes to write
+                type: integer
+                default: 0
+        numfiles:
+                description: number of files
+                type: integer
+                default: 0
+        repfactor:
+                description: replication factor per file
+                type: integer
+                default: 3
+        basedir:
+                description: DFS working directory with hostname automatically appended
+                type: string
+                default: "/benchmarks/NNBench"
+testdfsio:
+    description: DFS IO Testing
+    params:
+        mode:
+                description: read or write IO test
+                type: string
+                default: "write"
+                enum: [read,write]
+        numfiles:
+                description: number of files
+                type: integer
+                default: 10
+        filesize:
+                description: filesize in MB
+                type: integer
+                default: 1000
+        resfile:
+                description: Results file name
+                type: string
+                default: "/tmp/TestDFSIO_results.log"
+        buffersize:
+                description: Buffer size in bytes
+                type: integer
+                default: 1000000
 teragen:
     description: Generate data with teragen
     params:
