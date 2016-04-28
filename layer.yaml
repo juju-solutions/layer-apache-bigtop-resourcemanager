@@ -1,14 +1,15 @@
 repo: git@github.com:juju-solutions/layer-apache-bigtop-resourcemanager.git
 includes:
   - 'layer:apache-bigtop-base'
-#  - 'layer:hadoop-ganglia'
   - 'interface:dfs'
   - 'interface:mapred'
   - 'interface:mapred-slave'
   - 'interface:benchmark'
 options:
   apache-bigtop-base:
-    bigtop_component_list: 'hadoop yarn'
+    users:
+      ubuntu:
+        groups: ['hadoop']
     ports:
         resourcemanager:
             port: 8032
