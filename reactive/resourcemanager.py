@@ -5,6 +5,38 @@ from jujubigdata import utils
 import subprocess
 
 
+###############################################################################
+# Utility methods
+###############################################################################
+def send_early_install_info(namenode, remote):
+    """Send clients/slaves enough relation data to start their install.
+
+    If slaves or clients join before the resourcemanager is installed (and even
+    before the namenode is ready), we can still provide enough info to start
+    their installation. This will help parallelize installation among our
+    cluster.
+
+    Bigtop puppet scripts require a namenode fqdn, so don't send anything
+    to slaves or clients unless we have that. Also note that slaves can safely
+    install early, but should not start until the 'resourcemanager.ready' state
+    is set by the mapred-slave interface.
+    """
+    if namenode.namenodes()[0]:
+        nn_host = namenode.namenodes()[0]
+        rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
+        rm_ipc = get_layer_opts().port('resourcemanager')
+        jh_ipc = get_layer_opts().port('jobhistory')
+        jh_http = get_layer_opts().port('jh_webapp_http')
+
+        # TODO: fix below. we're sending both NN and RM. it's confusing to call
+        # that 'send_resourcemanagers'.
+        remote.send_resourcemanagers([nn_host, rm_host])
+        remote.send_ports(rm_ipc, jh_http, jh_ipc)
+
+
+###############################################################################
+# Core methods
+###############################################################################
 @when_not('namenode.joined')
 def blocked():
     hookenv.status_set('blocked', 'missing required namenode relation')
@@ -19,7 +51,7 @@ def install_resourcemanager(namenode):
     namenodes() data whenever we have a namenode relation. This allows us to
     install asap, even if 'namenode.ready' is not set yet.
     """
-    if namenode.namenodes():
+    if namenode.namenodes()[0]:
         hookenv.status_set('maintenance', 'installing resourcemanager')
         nn_host = namenode.namenodes()[0]
         rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
@@ -64,28 +96,14 @@ def start_resourcemanager(namenode):
     hookenv.status_set('active', 'ready')
 
 
-@when('namenode.ready', 'nodemanager.joined')
+###############################################################################
+# Slave methods
+###############################################################################
+@when('namenode.joined', 'nodemanager.joined')
 @when_not('apache-bigtop-resourcemanager.installed')
 def send_nm_install_info(namenode, nodemanager):
-    """Send nodemanagers enough info to start their install.
-
-    If a nodemanager joins before the resourcemanager is installed, we can
-    still provide enough info to start their installation. This will help
-    parallelize installation among our cluster.
-
-    NOTE: NodeManagers can safely install early, but should not start until
-    the mapred-slave interface has set the 'resourcemanager.ready' state.
-    """
-    nn_host = namenode.namenodes()[0]
-    rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
-    rm_ipc = get_layer_opts().port('resourcemanager')
-    jh_ipc = get_layer_opts().port('jobhistory')
-    jh_http = get_layer_opts().port('jh_webapp_http')
-
-    # TODO: fix below. we're sending both NN and RM. it's confusing to call
-    # that 'send_resourcemanagers'.
-    nodemanager.send_resourcemanagers([nn_host, rm_host])
-    nodemanager.send_ports(rm_ipc, jh_http, jh_ipc)
+    """Send nodemanagers enough relation data to start their install."""
+    send_early_install_info(namenode, nodemanager)
 
 
 @when('apache-bigtop-resourcemanager.started')
@@ -151,28 +169,14 @@ def wait_for_nm(namenode):
     hookenv.status_set('active', 'yarn requires a nodemanager relation')
 
 
-@when('namenode.ready', 'resourcemanager.clients')
+###############################################################################
+# Client methods
+###############################################################################
+@when('namenode.joined', 'resourcemanager.clients')
 @when_not('apache-bigtop-resourcemanager.installed')
 def send_client_install_info(namenode, client):
-    """Send clients (plugin, non-NMs) enough info to start their install.
-
-    If a client joins before the resourcemanager is installed, we can still
-    provide enough info to start their installation. This will help parallelize
-    installation among our cluster.
-
-    NOTE: Clients can safely install early, but should not start until
-    the mapred interface has set the 'resourcemanager.ready' state.
-    """
-    nn_host = namenode.namenodes()[0]
-    rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
-    rm_ipc = get_layer_opts().port('resourcemanager')
-    jh_ipc = get_layer_opts().port('jobhistory')
-    jh_http = get_layer_opts().port('jh_webapp_http')
-
-    # TODO: fix below. we're sending both NN and RM. it's confusing to call
-    # that 'send_resourcemanagers'.
-    client.send_resourcemanagers([nn_host, rm_host])
-    client.send_ports(rm_ipc, jh_http, jh_ipc)
+    """Send clients enough relation data to start their install."""
+    send_early_install_info(namenode, client)
 
 
 @when('apache-bigtop-resourcemanager.started')
@@ -206,3 +210,11 @@ def send_client_all_info(namenode, client):
     # hosts_map is required by the mapred interface to signify
     # RM's readiness. Send it, even though it is not utilized by bigtop.
     client.send_hosts_map(utils.get_kv_hosts())
+
+
+###############################################################################
+# Benchmark methods
+###############################################################################
+@when('benchmark.joined')
+def register_benchmarks(benchmark):
+    benchmark.register('mrbench', 'nnbench', 'terasort', 'testdfsio')
