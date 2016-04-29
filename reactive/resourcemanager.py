@@ -113,16 +113,15 @@ def send_nm_all_info(namenode, nodemanager):
     # RM's readiness. Send them, even though they are not utilized by bigtop.
     # NB: update KV hosts with all nodemanagers prior to sending the hosts_map
     # because mapred-slave gates readiness on a NM's presence in the hosts_map.
-    utils.update_kv_hosts({node['ip']: node['host']
-                           for node in nodemanager.nodes()})
+    utils.update_kv_hosts(nodemanager.hosts_map())
     nodemanager.send_hosts_map(utils.get_kv_hosts())
     nodemanager.send_ssh_key('invalid')
 
-    # update status with slave count and report ready for yarn
-    slaves = [node['host'] for node in nodemanager.nodes()]
+    # update status with slave count and report ready for hdfs
+    num_slaves = len(nodemanager.nodes())
     hookenv.status_set('active', 'ready ({count} nodemanager{s})'.format(
-        count=len(slaves),
-        s='s' if len(slaves) > 1 else '',
+        count=num_slaves,
+        s='s' if num_slaves > 1 else '',
     ))
     set_state('apache-bigtop-resourcemanager.ready')
 
@@ -137,8 +136,7 @@ def remove_nm(namenode, nodemanager):
     it is required for the 'resourcemanager.ready' state, so we may as well
     keep it accurate.
     """
-    nodes_leaving = nodemanager.nodes()  # only returns nodes in "departing" state
-    slaves_leaving = [node['host'] for node in nodes_leaving]
+    slaves_leaving = nodemanager.nodes()  # only returns nodes in "departing" state
     hookenv.log('Nodemanagers leaving: {}'.format(slaves_leaving))
     utils.remove_kv_hosts(slaves_leaving)
     nodemanager.dismiss()
