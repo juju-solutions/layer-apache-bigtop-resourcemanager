@@ -21,7 +21,7 @@ def send_early_install_info(namenode, remote):
     install early, but should not start until the 'resourcemanager.ready' state
     is set by the mapred-slave interface.
     """
-    if namenode.namenodes()[0]:
+    if namenode.namenodes():
         nn_host = namenode.namenodes()[0]
         rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
         rm_ipc = get_layer_opts().port('resourcemanager')
@@ -51,7 +51,7 @@ def install_resourcemanager(namenode):
     namenodes() data whenever we have a namenode relation. This allows us to
     install asap, even if 'namenode.ready' is not set yet.
     """
-    if namenode.namenodes()[0]:
+    if namenode.namenodes():
         hookenv.status_set('maintenance', 'installing resourcemanager')
         nn_host = namenode.namenodes()[0]
         rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
