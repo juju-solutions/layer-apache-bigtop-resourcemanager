@@ -65,6 +65,9 @@ def install_resourcemanager(namenode):
         # requirement.
         utils.initialize_kv_host()
 
+        # Add our ubuntu user to the hadoop and mapred groups.
+        get_layer_opts().add_users()
+
         set_state('apache-bigtop-resourcemanager.installed')
         hookenv.status_set('maintenance', 'resourcemanager installed')
     else:

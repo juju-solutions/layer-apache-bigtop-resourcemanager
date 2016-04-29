@@ -7,7 +7,7 @@ mrbench:
         basedir:
             description: DFS working directory
             type: string
-            default: "/benchmarks/mrbench"
+            default: "/benchmarks/MRBench"
         numruns:
             description: Number of times to run the job
             type: integer
@@ -57,7 +57,7 @@ nnbench:
                 type: integer
                 default: 3
         basedir:
-                description: DFS working directory with hostname automatically appended
+                description: DFS working directory
                 type: string
                 default: "/benchmarks/NNBench"
 testdfsio:

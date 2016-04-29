@@ -6,7 +6,6 @@ if ! charms.reactive is_state 'apache-bigtop-resourcemanager.ready'; then
     exit
 fi
 
-RESULT_LOG='/tmp/mrbench.results.log'
 BASE_DIR=`action-get basedir`/`hostname -s`
 OPTIONS=''
 
@@ -22,6 +21,13 @@ OPTIONS="${OPTIONS} -numRuns ${NUMRUNS}"
 OPTIONS="${OPTIONS} -inputLines ${INPUTLINES}"
 OPTIONS="${OPTIONS} -inputType ${INPUTTYPE}"
 OPTIONS="${OPTIONS} -baseDir ${BASE_DIR}"
+
+# create dir to store results
+RUN=`date +%s`
+RESULT_DIR=/opt/mrbench-results
+RESULT_LOG=${RESULT_DIR}/${RUN}.log
+mkdir -p ${RESULT_DIR}
+chown -R ubuntu:ubuntu ${RESULT_DIR}
 
 # clean out any previous data (must be run as ubuntu)
 su ubuntu << EOF

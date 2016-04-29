@@ -9,7 +9,7 @@ options:
   apache-bigtop-base:
     users:
       ubuntu:
-        groups: ['hadoop']
+        groups: ['hadoop', 'mapred']
     ports:
         resourcemanager:
             port: 8032

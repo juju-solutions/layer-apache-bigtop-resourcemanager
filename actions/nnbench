@@ -52,7 +52,9 @@ EOF
 STOP=`date +%s`
 benchmark-finish
 
-`cat ${RESULT_LOG} | $CHARM_DIR/actions/parseNNBench.py`
+su ubuntu << EOF
+`cat ${RESULT_LOG} | $CHARM_DIR/actions/parseTerasort.py`
+EOF
 
 DURATION=`expr $STOP - $START`
 benchmark-composite "${DURATION}" 'secs' 'asc'
