@@ -31,9 +31,7 @@ def install_resourcemanager(namenode):
         # but a hosts_map attribute is required by some interfaces (eg: mapred-slave)
         # to signify RM's readiness. Set our RM info in the KV to fulfill this
         # requirement.
-        kv_ip = utils.resolve_private_address(hookenv.unit_private_ip())
-        kv_hostname = hookenv.local_unit().replace('/', '-')
-        utils.update_kv_host(kv_ip, kv_hostname)
+        utils.initialize_kv_host()
 
         set_state('apache-bigtop-resourcemanager.installed')
         hookenv.status_set('maintenance', 'resourcemanager installed')
