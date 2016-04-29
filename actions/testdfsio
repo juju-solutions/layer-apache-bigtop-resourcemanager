@@ -46,7 +46,7 @@ START=`date +%s`
 # /etc/environment while non-escaped vars (e.g., ${IN_DIR}) are parameterized
 # from this outer scope
 su ubuntu << EOF
-. /etc/environment
+. /etc/default/hadoop
 echo 'running benchmark'
 cd /tmp/
 hadoop jar \${HADOOP_MAPRED_HOME}/hadoop-mapreduce-*test*.jar TestDFSIO $OPTIONS &> ${RESULT_LOG}
