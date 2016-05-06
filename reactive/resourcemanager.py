@@ -8,30 +8,23 @@ import subprocess
 ###############################################################################
 # Utility methods
 ###############################################################################
-def send_early_install_info(namenode, remote):
+def send_early_install_info(remote):
     """Send clients/slaves enough relation data to start their install.
 
-    If slaves or clients join before the resourcemanager is installed (and even
-    before the namenode is ready), we can still provide enough info to start
-    their installation. This will help parallelize installation among our
-    cluster.
+    If slaves or clients join before the resourcemanager is installed, we can
+    still provide enough info to start their installation. This will help
+    parallelize installation among our cluster.
 
-    Bigtop puppet scripts require a namenode fqdn, so don't send anything
-    to slaves or clients unless we have that. Also note that slaves can safely
-    install early, but should not start until the 'resourcemanager.ready' state
-    is set by the mapred-slave interface.
+    Note that slaves can safely install early, but should not start until the
+    'resourcemanager.ready' state is set by the mapred-slave interface.
     """
-    if namenode.namenodes():
-        nn_host = namenode.namenodes()[0]
-        rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
-        rm_ipc = get_layer_opts().port('resourcemanager')
-        jh_ipc = get_layer_opts().port('jobhistory')
-        jh_http = get_layer_opts().port('jh_webapp_http')
+    rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
+    rm_ipc = get_layer_opts().port('resourcemanager')
+    jh_ipc = get_layer_opts().port('jobhistory')
+    jh_http = get_layer_opts().port('jh_webapp_http')
 
-        # TODO: fix below. we're sending both NN and RM. it's confusing to call
-        # that 'send_resourcemanagers'.
-        remote.send_resourcemanagers([nn_host, rm_host])
-        remote.send_ports(rm_ipc, jh_http, jh_ipc)
+    remote.send_resourcemanagers([rm_host])
+    remote.send_ports(rm_ipc, jh_http, jh_ipc)
 
 
 ###############################################################################
@@ -79,7 +72,6 @@ def install_resourcemanager(namenode):
 def send_nn_spec(namenode):
     """Send our resourcemanager spec so the namenode can become ready."""
     bigtop = get_bigtop_base()
-    # Send RM spec (must match NN spec for 'namenode.ready' to be set)
     namenode.set_local_spec(bigtop.spec())
     hookenv.status_set('waiting', 'waiting for namenode to become ready')
 
@@ -102,31 +94,28 @@ def start_resourcemanager(namenode):
 ###############################################################################
 # Slave methods
 ###############################################################################
-@when('namenode.joined', 'nodemanager.joined')
+@when('nodemanager.joined')
 @when_not('apache-bigtop-resourcemanager.installed')
-def send_nm_install_info(namenode, nodemanager):
+def send_nm_install_info(nodemanager):
     """Send nodemanagers enough relation data to start their install."""
-    send_early_install_info(namenode, nodemanager)
+    send_early_install_info(nodemanager)
 
 
 @when('apache-bigtop-resourcemanager.started')
-@when('namenode.ready', 'nodemanager.joined')
-def send_nm_all_info(namenode, nodemanager):
+@when('nodemanager.joined')
+def send_nm_all_info(nodemanager):
     """Send nodemanagers all mapred-slave relation data.
 
     At this point, the resourcemanager is ready to serve nodemanagers. Send all
     mapred-slave relation data so that our 'resourcemanager.ready' state becomes set.
     """
     bigtop = get_bigtop_base()
-    nn_host = namenode.namenodes()[0]
     rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
     rm_ipc = get_layer_opts().port('resourcemanager')
     jh_ipc = get_layer_opts().port('jobhistory')
     jh_http = get_layer_opts().port('jh_webapp_http')
 
-    # TODO: fix below. we're sending both NN and RM. it's confusing to call
-    # that 'send_resourcemanagers'.
-    nodemanager.send_resourcemanagers([nn_host, rm_host])
+    nodemanager.send_resourcemanagers([rm_host])
     nodemanager.send_spec(bigtop.spec())
     nodemanager.send_ports(rm_ipc, jh_http, jh_ipc)
 
@@ -148,8 +137,8 @@ def send_nm_all_info(namenode, nodemanager):
 
 
 @when('apache-bigtop-resourcemanager.started')
-@when('namenode.ready', 'nodemanager.departing')
-def remove_nm(namenode, nodemanager):
+@when('nodemanager.departing')
+def remove_nm(nodemanager):
     """Handle a departing nodemanager.
 
     This simply logs a message about a departing nodemanager and removes
@@ -163,9 +152,9 @@ def remove_nm(namenode, nodemanager):
     nodemanager.dismiss()
 
 
-@when('apache-bigtop-resourcemanager.started', 'namenode.ready')
+@when('apache-bigtop-resourcemanager.started')
 @when_not('nodemanager.joined')
-def wait_for_nm(namenode):
+def wait_for_nm():
     remove_state('apache-bigtop-resourcemanager.ready')
     # NB: we're still active since a user may be interested in our web UI
     # without any NMs, but let them know yarn is caput without a NM relation.
@@ -175,31 +164,28 @@ def wait_for_nm(namenode):
 ###############################################################################
 # Client methods
 ###############################################################################
-@when('namenode.joined', 'resourcemanager.clients')
+@when('resourcemanager.clients')
 @when_not('apache-bigtop-resourcemanager.installed')
-def send_client_install_info(namenode, client):
+def send_client_install_info(client):
     """Send clients enough relation data to start their install."""
-    send_early_install_info(namenode, client)
+    send_early_install_info(client)
 
 
 @when('apache-bigtop-resourcemanager.started')
-@when('namenode.ready', 'resourcemanager.clients')
-def send_client_all_info(namenode, client):
+@when('resourcemanager.clients')
+def send_client_all_info(client):
     """Send clients (plugin, RM, non-DNs) all dfs relation data.
 
     At this point, the resourcemanager is ready to serve clients. Send all
     mapred relation data so that our 'resourcemanager.ready' state becomes set.
     """
     bigtop = get_bigtop_base()
-    nn_host = namenode.namenodes()[0]
     rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
     rm_ipc = get_layer_opts().port('resourcemanager')
     jh_ipc = get_layer_opts().port('jobhistory')
     jh_http = get_layer_opts().port('jh_webapp_http')
 
-    # TODO: fix below. we're sending both NN and RM. it's confusing to call
-    # that 'send_resourcemanagers'.
-    client.send_resourcemanagers([nn_host, rm_host])
+    client.send_resourcemanagers([rm_host])
     client.send_spec(bigtop.spec())
     client.send_ports(rm_ipc, jh_http, jh_ipc)
 
