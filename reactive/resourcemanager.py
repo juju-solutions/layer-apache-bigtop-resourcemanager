@@ -1,8 +1,7 @@
 from charms.reactive import is_state, remove_state, set_state, when, when_not
-from charms.layer.apache_bigtop_base import get_bigtop_base, get_layer_opts
+from charms.layer.apache_bigtop_base import Bigtop, get_layer_opts, get_fqdn
 from charmhelpers.core import hookenv, host
 from jujubigdata import utils
-import subprocess
 
 
 ###############################################################################
@@ -18,7 +17,7 @@ def send_early_install_info(remote):
     Note that slaves can safely install early, but should not start until the
     'resourcemanager.ready' state is set by the mapred-slave interface.
     """
-    rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
+    rm_host = get_fqdn()
     rm_ipc = get_layer_opts().port('resourcemanager')
     jh_ipc = get_layer_opts().port('jobhistory')
     jh_http = get_layer_opts().port('jh_webapp_http')
@@ -35,7 +34,7 @@ def blocked():
     hookenv.status_set('blocked', 'missing required namenode relation')
 
 
-@when('puppet.available', 'namenode.joined')
+@when('bigtop.available', 'namenode.joined')
 @when_not('apache-bigtop-resourcemanager.installed')
 def install_resourcemanager(namenode):
     """Install if the namenode has sent its FQDN.
@@ -47,10 +46,11 @@ def install_resourcemanager(namenode):
     if namenode.namenodes():
         hookenv.status_set('maintenance', 'installing resourcemanager')
         nn_host = namenode.namenodes()[0]
-        rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
-        bigtop = get_bigtop_base()
+        rm_host = get_fqdn()
+        bigtop = Bigtop()
         hosts = {'namenode': nn_host, 'resourcemanager': rm_host}
-        bigtop.install(hosts=hosts, roles='resourcemanager')
+        bigtop.render_site_yaml(hosts=hosts, roles='resourcemanager')
+        bigtop.trigger_puppet()
 
         # /etc/hosts entries from the KV are not currently used for bigtop,
         # but a hosts_map attribute is required by some interfaces (eg: mapred-slave)
@@ -71,7 +71,7 @@ def install_resourcemanager(namenode):
 @when_not('namenode.ready')
 def send_nn_spec(namenode):
     """Send our resourcemanager spec so the namenode can become ready."""
-    bigtop = get_bigtop_base()
+    bigtop = Bigtop()
     namenode.set_local_spec(bigtop.spec())
     hookenv.status_set('waiting', 'waiting for namenode to become ready')
 
@@ -109,8 +109,8 @@ def send_nm_all_info(nodemanager):
     At this point, the resourcemanager is ready to serve nodemanagers. Send all
     mapred-slave relation data so that our 'resourcemanager.ready' state becomes set.
     """
-    bigtop = get_bigtop_base()
-    rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
+    bigtop = Bigtop()
+    rm_host = get_fqdn()
     rm_ipc = get_layer_opts().port('resourcemanager')
     jh_ipc = get_layer_opts().port('jobhistory')
     jh_http = get_layer_opts().port('jh_webapp_http')
@@ -179,8 +179,8 @@ def send_client_all_info(client):
     At this point, the resourcemanager is ready to serve clients. Send all
     mapred relation data so that our 'resourcemanager.ready' state becomes set.
     """
-    bigtop = get_bigtop_base()
-    rm_host = subprocess.check_output(['facter', 'fqdn']).strip().decode()
+    bigtop = Bigtop()
+    rm_host = get_fqdn()
     rm_ipc = get_layer_opts().port('resourcemanager')
     jh_ipc = get_layer_opts().port('jobhistory')
     jh_http = get_layer_opts().port('jh_webapp_http')
